@@ -5,72 +5,93 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.net.URL
 
+
 class MainActivity : AppCompatActivity() {
-    private lateinit var btnGet:Button
-    private lateinit var tvAdvice:TextView
+    private lateinit var tvadvice:TextView
+    private lateinit var advicebtn:Button
+
+    val adviceUrl = "https://api.adviceslip.com/advice"
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        btnGet=findViewById(R.id.bGet)
-        tvAdvice=findViewById(R.id.tvAdvice)
-        btnGet.setOnClickListener {  requestAPI()}
+        tvadvice = findViewById(R.id.tvAdvice)
+        advicebtn = findViewById(R.id.bGet)
+
+        advicebtn.setOnClickListener(){
+
+            requestApi()
+
+        }
+
+
+
+
 
 
     }
-    fun requestAPI(){
-        // we use Coroutines to fetch the data, then update the Recycler View if the data is valid
-        CoroutineScope(IO).launch {
-            // we fetch the prices
-            val data = async { fetchPrices() }.await()
-            // once the data comes back, we populate our Recycler View
-            if(data.isNotEmpty()){
-                populateRV(data)
-            }else{
-                Log.d("MAIN", "Unable to get data")
+
+    private fun requestApi()
+    {
+
+        CoroutineScope(Dispatchers.IO).launch {
+
+            val data = async {
+
+                fetchRandomAdvice()
+
+            }.await()
+
+            if (data.isNotEmpty())
+            {
+
+                updateAdviceText(data)
             }
+
         }
+
     }
 
+    private fun fetchRandomAdvice():String{
 
-    fun fetchPrices(): String{
+        var response=""
+        try {
+            response =URL(adviceUrl).readText(Charsets.UTF_8)
 
-        var response = ""
-        try{
-            response = URL("https://api.adviceslip.com/advice").readText()
-        }catch(e: Exception){
-            Log.d("MAIN", "ISSUE: $e")
+        }catch (e:Exception)
+        {
+            println("Error $e")
+
         }
-        // our response is saved as a string
         return response
+
     }
 
-    suspend fun populateRV(result: String){
-        withContext(Main){
-            // we create a JSON object from the data
-            val jsonObj = JSONObject(result)
+    private suspend fun updateAdviceText(data:String)
+    {
+        withContext(Dispatchers.Main)
+        {
 
-            // to go deeper, we can use the getString method (here we get the value of USD)
-            val Advice = jsonObj.getJSONObject("slip").getString("advice")
-            println(Advice)
-            tvAdvice.setText(Advice)
+            val jsonObject = JSONObject(data)
+            val slip = jsonObject.getJSONObject("slip")
+            val id = slip.getInt("id")
+            val advice = slip.getString("advice")
+
+            tvadvice.text = advice
 
         }
 
+    }
 
-    }}
-
-
+}
